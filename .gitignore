@@ -1,0 +1,20 @@
+build/
+build-*/
+artifacts/
+*.o
+*.a
+*.so
+compile_commands.json
+
+# Generated from regmaps/soc.yaml at build time - never commit it, or someone
+# will edit the header instead of the databook.
+generated/
+
+__pycache__/
+*.pyc
+*.csv
+*.tar.gz
+
+.vscode/
+.idea/
+*.swp
