@@ -53,6 +53,9 @@ target_include_directories(soc_core PUBLIC
   ${SOC_GEN_DIR})
 find_package(Threads REQUIRED)
 target_link_libraries(soc_core PUBLIC Threads::Threads)
+# The static library gets linked into the pybind11 shared module, which requires
+# position-independent code throughout.
+set_target_properties(soc_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # --------------------------------------------------------------------- benchmark
 add_executable(soc_benchmark benchmarks/bench_main.cpp)
@@ -69,6 +72,9 @@ endif()
 
 # ---------------------------------------------------------------------- bindings
 if(SOC_BUILD_PYTHON)
+  # pybind11_add_module calls python3_add_library, which needs the module
+  # development component - Interpreter alone is not enough.
+  find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
   # pip-installed pybind11 does not land on CMake's default search path.
   execute_process(
     COMMAND ${Python3_EXECUTABLE} -m pybind11 --cmakedir
