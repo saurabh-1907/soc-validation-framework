@@ -1,0 +1,100 @@
+# Register map, the way a databook describes it.
+# Everything downstream - the C++ access layer, the emulated device, the tests -
+# is generated from or driven by this file. Adding a register is a data change.
+#
+# access:  RW  read/write
+#          RO  read-only  (no setter is generated; writes are rejected)
+#          W1C write-1-to-clear (no plain setter; clear_X() writes a 1)
+
+blocks:
+  - name: DMA
+    base: 0x40000000
+    description: Scatter-gather DMA engine
+    registers:
+      - name: CTRL
+        offset: 0x00
+        width: 32
+        reset: 0x00000000
+        access: RW
+        fields:
+          - { name: GO,        bits: "0",     access: RW, description: "1 starts a transfer" }
+          - { name: ABORT,     bits: "1",     access: RW }
+          - { name: IRQ_EN,    bits: "2",     access: RW }
+          - { name: BURST_LEN, bits: "11:4",  access: RW, description: "beats per burst" }
+          - { name: CHANNEL,   bits: "15:12", access: RW }
+          - { name: MODE,      bits: "17:16", access: RW,
+              enum: { SINGLE: 0, SCATTER: 1, GATHER: 2, RING: 3 } }
+      - name: STATUS
+        offset: 0x04
+        width: 32
+        reset: 0x00000001          # IDLE set out of reset
+        access: RO
+        fields:
+          - { name: IDLE,      bits: "0",     access: RO }
+          - { name: BUSY,      bits: "1",     access: RO }
+          - { name: DONE,      bits: "2",     access: RO }
+          - { name: BEATS,     bits: "23:8",  access: RO, description: "beats transferred" }
+      - name: IRQ_STATUS
+        offset: 0x08
+        width: 32
+        reset: 0x00000000
+        access: RW
+        fields:
+          - { name: DONE_IRQ,  bits: "0",     access: W1C }
+          - { name: ERR_IRQ,   bits: "1",     access: W1C }
+          - { name: OVERFLOW,  bits: "2",     access: W1C }
+      - name: SRC_ADDR
+        offset: 0x0C
+        width: 32
+        reset: 0x00000000
+        access: RW
+        fields:
+          - { name: ADDR,      bits: "31:0",  access: RW }
+      - name: DST_ADDR
+        offset: 0x10
+        width: 32
+        reset: 0x00000000
+        access: RW
+        fields:
+          - { name: ADDR,      bits: "31:0",  access: RW }
+      - name: XFER_LEN
+        offset: 0x14
+        width: 32
+        reset: 0x00000000
+        access: RW
+        fields:
+          - { name: BYTES,     bits: "23:0",  access: RW }
+
+  - name: PCIE
+    base: 0x50000000
+    description: PCIe-style link status block
+    registers:
+      - name: LINK_STATUS
+        offset: 0x00
+        width: 32
+        reset: 0x00000000
+        access: RO
+        fields:
+          - { name: LINK_UP,   bits: "0",     access: RO }
+          - { name: SPEED,     bits: "3:1",   access: RO,
+              enum: { GEN1: 1, GEN2: 2, GEN3: 3, GEN4: 4 } }
+          - { name: WIDTH,     bits: "9:4",   access: RO, description: "negotiated lanes" }
+          - { name: LTSSM,     bits: "15:10", access: RO, description: "link training state" }
+      - name: LINK_CTRL
+        offset: 0x04
+        width: 32
+        reset: 0x00000000
+        access: RW
+        fields:
+          - { name: RETRAIN,   bits: "0",     access: RW }
+          - { name: TARGET_SPEED, bits: "3:1", access: RW,
+              enum: { GEN1: 1, GEN2: 2, GEN3: 3, GEN4: 4 } }
+      - name: ERR_STATUS
+        offset: 0x08
+        width: 32
+        reset: 0x00000000
+        access: RW
+        fields:
+          - { name: CORRECTABLE, bits: "0",   access: W1C }
+          - { name: FATAL,       bits: "1",   access: W1C }
+          - { name: REPLAY_TIMEOUT, bits: "2", access: W1C }
