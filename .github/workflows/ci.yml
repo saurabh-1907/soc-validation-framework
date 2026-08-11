@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.compiler }}${{ matrix.sanitize && format(' + {0}', matrix.sanitize) || '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc
+          - compiler: clang
+          - compiler: clang
+            sanitize: address,undefined
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq cmake clang libgtest-dev python3-yaml
+
+      - name: Build
+        run: |
+          ./scripts/build.sh --compiler ${{ matrix.compiler }} \
+            ${{ matrix.sanitize && format('--sanitize {0}', matrix.sanitize) || '' }}
+
+      - name: Test
+        env:
+          # halt_on_error keeps a sanitiser finding from being buried in output
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+        run: ./scripts/run-suite.sh
+
+      - name: Benchmark
+        if: matrix.compiler == 'gcc'
+        run: ./build/soc_benchmark /tmp/RESULTS.md
+
+  valgrind:
+    name: valgrind memcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq cmake valgrind libgtest-dev python3-yaml
+      - name: Build
+        run: ./scripts/build.sh --compiler gcc --type Debug
+      - name: Memcheck
+        run: ./scripts/run-suite.sh --valgrind
+
+  format:
+    name: clang-format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq clang-format
+      - name: Check formatting
+        run: |
+          find include src tests benchmarks python -name '*.hpp' -o -name '*.cpp' \
+            | xargs clang-format --dry-run --Werror
