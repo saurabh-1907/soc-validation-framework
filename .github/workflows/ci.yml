@@ -72,5 +72,5 @@ jobs:
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq clang-format
       - name: Check formatting
         run: |
-          find include src tests benchmarks python -name '*.hpp' -o -name '*.cpp' \
+          find include src tests benchmarks python \( -name '*.hpp' -o -name '*.cpp' \) \
             | xargs clang-format --dry-run --Werror
